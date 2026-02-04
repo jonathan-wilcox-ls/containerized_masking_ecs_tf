@@ -1,0 +1,36 @@
+aws_region   = "us-west-2"
+environment  = "dev"
+project_name = "delphix-masking"
+
+# Create a complete dev network automatically.
+create_dev_network = true
+
+# Optional overrides for generated network CIDRs.
+# dev_vpc_cidr             = "10.42.0.0/16"
+# dev_public_subnet_cidrs  = ["10.42.0.0/24", "10.42.1.0/24"]
+# dev_private_subnet_cidrs = ["10.42.10.0/24", "10.42.11.0/24"]
+
+# Existing cert path (option A)
+# certificate_arn = "arn:aws:acm:us-west-2:123456789012:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+# Create ACM cert + validation records (option B, recommended for dev parity)
+create_acm_certificate = true
+acm_domain_name        = "masking-dev.example.com"
+route53_zone_id        = "Z1234567890ABC"
+
+# Delphix images
+docker_registry_url        = "123456789012.dkr.ecr.us-west-2.amazonaws.com/repo-name"
+masking_database_image_tag = "delphix-masking-database-29.0.0.1"
+masking_app_image_tag      = "delphix-masking-app-29.0.0.1"
+masking_proxy_image_tag    = "delphix-masking-proxy-29.0.0.1"
+
+# Optional tuning
+desired_count      = 1
+task_cpu           = 8192
+task_memory        = 16384
+assign_public_ip   = false
+app_mask_debug     = "true"
+log_retention_days = 30
+
+# Optional: needed only for private non-ECR registries
+# repository_credentials_secret_arn = "arn:aws:secretsmanager:us-west-2:123456789012:secret:registry-creds-xxxx"
