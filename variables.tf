@@ -27,6 +27,12 @@ variable "alb_subnet_ids" {
   default     = []
 }
 
+variable "alb_ingress_cidrs" {
+  description = "CIDR allowlist for ALB inbound (HTTP/HTTPS)"
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
 variable "ecs_subnet_ids" {
   description = "Subnet IDs where ECS tasks run"
   type        = list(string)

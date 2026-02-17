@@ -31,6 +31,9 @@ If you already have networking, set `create_dev_network = false` and provide:
 - `ecs_subnet_ids`
 - `efs_subnet_ids`
 
+You can also restrict ALB ingress with:
+- `alb_ingress_cidrs` (defaults to `["0.0.0.0/0"]`)
+
 ## HTTPS options
 
 Use one of these:

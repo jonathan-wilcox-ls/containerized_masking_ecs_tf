@@ -5,6 +5,9 @@ project_name = "delphix-masking"
 # Create a complete dev network automatically.
 create_dev_network = true
 
+# Restrict ALB ingress if desired.
+# alb_ingress_cidrs = ["203.0.113.0/24"]
+
 # Optional overrides for generated network CIDRs.
 # dev_vpc_cidr             = "10.42.0.0/16"
 # dev_public_subnet_cidrs  = ["10.42.0.0/24", "10.42.1.0/24"]
