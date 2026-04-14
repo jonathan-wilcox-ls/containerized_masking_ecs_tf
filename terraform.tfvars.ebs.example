@@ -1,0 +1,71 @@
+aws_region   = "us-west-2"
+environment  = "dev"
+project_name = "delphix-masking"
+
+# Persistent storage backend
+storage_backend = "ebs"
+
+# Required for ECS managed EBS volumes
+ecs_infrastructure_role_arn = "arn:aws:iam::123456789012:role/ecsInfrastructureRole"
+
+# EBS settings
+ebs_volume_type           = "gp3"
+ebs_postgresql_size_in_gb = 20
+ebs_masking_size_in_gb    = 50
+ebs_filesystem_type       = "xfs"
+# Optional restore source for redeployments
+# ebs_snapshot_id         = "snap-0123456789abcdef0"
+# Optional performance tuning
+# ebs_iops                = 3000
+# ebs_throughput          = 125
+# ebs_volume_initialization_rate = 250
+# Optional direct volume tags
+# ebs_volume_tags         = { BackupClass = "predeploy" }
+# Optional CMK for EBS encryption
+# ebs_kms_key_id          = "arn:aws:kms:us-west-2:123456789012:key/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+# Create a complete dev network automatically.
+create_dev_network = true
+
+# Reduce NAT traffic with private AWS endpoints in the dev VPC.
+enable_private_aws_endpoints = true
+# interface_endpoint_services = ["ecr.api", "ecr.dkr", "logs", "secretsmanager", "kms", "sts"]
+
+# Restrict ALB ingress if desired.
+# alb_ingress_cidrs = ["203.0.113.0/24"]
+
+# Private-only service option:
+# alb_internal = true
+# For existing networking (create_dev_network = false), provide private ALB subnets:
+# alb_private_subnet_ids = ["subnet-aaa", "subnet-bbb"]
+
+# Optional overrides for generated network CIDRs.
+# dev_vpc_cidr             = "10.42.0.0/16"
+# dev_public_subnet_cidrs  = ["10.42.0.0/24", "10.42.1.0/24"]
+# dev_private_subnet_cidrs = ["10.42.10.0/24", "10.42.11.0/24"]
+
+# Existing cert path (option A)
+# certificate_arn = "arn:aws:acm:us-west-2:123456789012:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+# Create ACM cert + validation records (option B, recommended for dev parity)
+create_acm_certificate = true
+acm_domain_name        = "masking-dev.example.com"
+route53_zone_id        = "Z1234567890ABC"
+# create_service_dns_record = true
+
+# Delphix images
+docker_registry_url        = "123456789012.dkr.ecr.us-west-2.amazonaws.com/repo-name"
+masking_database_image_tag = "delphix-masking-database-29.0.0.1"
+masking_app_image_tag      = "delphix-masking-app-29.0.0.1"
+masking_proxy_image_tag    = "delphix-masking-proxy-29.0.0.1"
+
+# Optional tuning
+desired_count      = 1
+task_cpu           = 8192
+task_memory        = 16384
+assign_public_ip   = false
+app_mask_debug     = "true"
+log_retention_days = 30
+
+# Optional: needed only for private non-ECR registries
+# repository_credentials_secret_arn = "arn:aws:secretsmanager:us-west-2:123456789012:secret:registry-creds-xxxx"

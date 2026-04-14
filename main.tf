@@ -42,13 +42,35 @@ locals {
       credentialsParameter = var.repository_credentials_secret_arn
     }
   }
+  jdbc_tls_s3_uri_no_scheme = var.jdbc_tls_cert_source_s3_uri == null ? null : trimprefix(var.jdbc_tls_cert_source_s3_uri, "s3://")
+  jdbc_tls_s3_parts         = var.jdbc_tls_cert_source_s3_uri == null ? [] : split("/", local.jdbc_tls_s3_uri_no_scheme)
+  jdbc_tls_s3_bucket        = length(local.jdbc_tls_s3_parts) > 0 ? local.jdbc_tls_s3_parts[0] : null
+  jdbc_tls_s3_key           = length(local.jdbc_tls_s3_parts) > 1 ? join("/", slice(local.jdbc_tls_s3_parts, 1, length(local.jdbc_tls_s3_parts))) : null
+  jdbc_tls_s3_object_arn    = local.jdbc_tls_s3_bucket != null && local.jdbc_tls_s3_key != null ? "arn:aws:s3:::${local.jdbc_tls_s3_bucket}/${local.jdbc_tls_s3_key}" : null
 
-  effective_vpc_id          = var.create_dev_network ? aws_vpc.dev[0].id : var.vpc_id
-  effective_alb_subnet_ids  = var.create_dev_network ? [for k in sort(keys(aws_subnet.public)) : aws_subnet.public[k].id] : var.alb_subnet_ids
+  effective_vpc_id = var.create_dev_network ? aws_vpc.dev[0].id : var.vpc_id
+
+  effective_alb_subnet_ids = var.create_dev_network ? (
+    var.alb_internal ?
+    [for k in sort(keys(aws_subnet.private)) : aws_subnet.private[k].id] :
+    [for k in sort(keys(aws_subnet.public)) : aws_subnet.public[k].id]
+    ) : (
+    var.alb_internal && length(var.alb_private_subnet_ids) > 0 ?
+    var.alb_private_subnet_ids :
+    var.alb_subnet_ids
+  )
+
   effective_ecs_subnet_ids  = var.create_dev_network ? [for k in sort(keys(aws_subnet.private)) : aws_subnet.private[k].id] : var.ecs_subnet_ids
   effective_efs_subnet_map  = var.create_dev_network ? { for k, subnet in aws_subnet.private : k => subnet.id } : { for i, subnet_id in var.efs_subnet_ids : tostring(i) => subnet_id }
   effective_efs_subnet_ids  = values(local.effective_efs_subnet_map)
   effective_certificate_arn = var.create_acm_certificate ? aws_acm_certificate_validation.this[0].certificate_arn : var.certificate_arn
 
   enable_https = var.create_acm_certificate || (var.certificate_arn != null && var.certificate_arn != "")
+  create_service_alias = (
+    var.create_service_dns_record &&
+    var.route53_zone_id != null &&
+    var.route53_zone_id != "" &&
+    var.acm_domain_name != null &&
+    var.acm_domain_name != ""
+  )
 }

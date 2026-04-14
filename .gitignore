@@ -29,3 +29,6 @@ terraform.rc
 
 # Optional: ignore graph output files
 # *.dot
+# Optional: ignore generated documentation files
+Local_Project_Docs/
+Local_Files/

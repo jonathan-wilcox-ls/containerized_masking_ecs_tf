@@ -35,7 +35,7 @@ resource "aws_acm_certificate_validation" "this" {
 }
 
 resource "aws_route53_record" "service_alias" {
-  count = var.create_acm_certificate ? 1 : 0
+  count = local.create_service_alias ? 1 : 0
 
   zone_id = var.route53_zone_id
   name    = var.acm_domain_name

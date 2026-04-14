@@ -30,7 +30,12 @@ output "cloudwatch_log_group" {
 
 output "efs_id" {
   description = "EFS filesystem ID backing persistent storage"
-  value       = aws_efs_file_system.masking.id
+  value       = var.storage_backend == "efs" ? module.storage_efs[0].file_system_id : null
+}
+
+output "storage_backend" {
+  description = "Selected persistent storage backend"
+  value       = var.storage_backend
 }
 
 output "vpc_id" {

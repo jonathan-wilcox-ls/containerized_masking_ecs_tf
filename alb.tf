@@ -57,7 +57,7 @@ resource "aws_security_group" "ecs_tasks" {
 
 resource "aws_lb" "this" {
   name               = substr(replace("${local.name_prefix}-alb", "_", "-"), 0, 32)
-  internal           = false
+  internal           = var.alb_internal
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
   subnets            = local.effective_alb_subnet_ids
