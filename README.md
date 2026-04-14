@@ -5,13 +5,15 @@ This folder is an ECS/Fargate variant of the existing Kubernetes deployment.
 ## What it deploys
 
 - ECS cluster, task definition, and Fargate service
-- Three containers in one task (`database`, `app`, `proxy`)
+- Three core containers in one task (`database`, `app`, `proxy`)
+- Optional fourth sidecar container: `jdbc-truststore-init` when `enable_jdbc_tls_init = true`
 - ALB routing:
   - `/` -> proxy container on `8080`
 - HTTPS via ACM (existing ARN or optional ACM+Route53 creation)
 - Persistent storage for:
   - `/var/delphix/postgresql`
   - `/var/delphix/masking`
+  - `/var/delphix/ssl`
   - Backends:
     - `efs` (default): EFS + access points
     - `ebs`: ECS managed EBS using one shared volume mounted at `/var/delphix`
@@ -44,6 +46,7 @@ You can also restrict ALB ingress with:
 Endpoint toggles:
 - `enable_private_aws_endpoints` (default `true`)
 - `interface_endpoint_services` (override list if you want fewer/more endpoints)
+- If you want ECS Exec in a fully private environment without NAT, also include `ssm`, `ssmmessages`, and `ec2messages` interface endpoints.
 
 ## HTTPS options
 
@@ -56,7 +59,8 @@ Use one of these:
    - `route53_zone_id`
 
 DNS alias record:
-- `create_service_dns_record = true` creates an alias for `acm_domain_name` to the ALB when both `acm_domain_name` and `route53_zone_id` are set.
+- `create_service_dns_record` defaults to `true` and creates an alias for `acm_domain_name` to the ALB when both `acm_domain_name` and `route53_zone_id` are set.
+- Set `create_service_dns_record = false` if you want ACM validation records only and do not want Terraform to create the service alias.
 - For private-only service, use a Route53 private hosted zone ID.
 
 ## Required image inputs
@@ -111,7 +115,7 @@ Important:
 - Plan a cutover/backup strategy before changing backend on an existing environment.
 - For `ebs`, actual volume size is `max(ebs_postgresql_size_in_gb, ebs_masking_size_in_gb)`.
 - For `ebs`, keep `desired_count = 1`; ECS creates one managed EBS volume per service task.
-- Snapshot-based redeploy workflow: create a snapshot from the running task volume, then redeploy with `ebs_snapshot_id` set to that snapshot. See [Project_Docs/EBS_SNAPSHOT_RUNBOOK.md](/Users/jonathanwilcox/Documents/projects/Work/Perforce/Delphix/Continuous_Compliance/containerized-masking/containerized_masking_ecs_tf/Project_Docs/EBS_SNAPSHOT_RUNBOOK.md).
+- Snapshot-based redeploy workflow: create a snapshot from the running task volume, then redeploy with `ebs_snapshot_id` set to that snapshot. See [EBS Snapshot Runbook](/Users/jonathanwilcox/Documents/projects/Work/Perforce/Delphix/Continuous_Compliance/containerized-masking/containerized_masking_ecs_tf/Local_Project_Docs/EBS_SNAPSHOT_RUNBOOK.md).
 
 ## JDBC TLS cert source automation (S3 / Secrets Manager)
 
@@ -123,13 +127,14 @@ Set:
   - `jdbc_tls_cert_source_s3_uri = "s3://<bucket>/<key>.pem"`
   - or `jdbc_tls_cert_source_secret_arn = "arn:aws:secretsmanager:...:secret:..."`
 - Optional:
-  - `jdbc_tls_init_image` (defaults to masking app image)
+  - `jdbc_tls_init_image` (defaults to masking app image, but you should set this explicitly unless your app image already contains both `aws` CLI and `keytool`)
   - `jdbc_tls_truststore_password` (defaults to `changeit`)
 
 Notes:
 - Secret source must store PEM bundle text in `SecretString`.
 - The task role gets source-read permissions automatically when this is enabled.
 - The init image must contain both `aws` CLI and `keytool`.
+- For S3 or Secrets Manager truststore automation, use a dedicated init image unless you have already verified the app image includes both tools.
 - Both EBS and EFS modes expose customer cert material at `/var/delphix/ssl/`.
 - Sidecar writes the truststore to `/var/delphix/ssl/.masking_certs`.
 - The app container waits for sidecar `SUCCESS` before startup.
@@ -177,10 +182,11 @@ Notes:
 - ECS tasks in private subnets need outbound access to reach Artifactory (NAT or VPC endpoints).
 - If the secret uses a customer-managed KMS key, the ECS execution role must be allowed to decrypt it.
 
-## Quick start (dev)
+## Quick start
 
-1. Copy `terraform.tfvars.dev.example` to `terraform.tfvars`
-   - For EBS-backed storage, start from `terraform.tfvars.ebs.example` instead.
+1. Copy the example that matches your storage mode to `terraform.tfvars`
+   - EFS-backed storage: `terraform.tfvars.efs.example`
+   - EBS-backed storage: `terraform.tfvars.ebs.example`
 2. Fill in registry/image values
 3. Fill in ACM/Route53 values for HTTPS
 4. Run:
@@ -198,5 +204,6 @@ terraform apply
 - If you need help getting your images into ECR, read [AWS ECR Upload Guide for Delphix Masking Images](uploading-images-to-ECR.md)
 - If your registry is private and not ECR, set `repository_credentials_secret_arn`.
 - The Java debug port (`15213`) is not exposed through ALB (it is not HTTP).
-- For JDBC TLS certificate setup on ECS, see [JDBC TLS on ECS](JDBC_TLS_ECS.md).
+- For JDBC TLS certificate setup on ECS, see [JDBC TLS on ECS](/Users/jonathanwilcox/Documents/projects/Work/Perforce/Delphix/Continuous_Compliance/containerized-masking/containerized_masking_ecs_tf/Local_Project_Docs/JDBC_TLS_ECS.md).
 - ECS Exec is enabled on the service and the task role includes the required `ssmmessages:*Channel` permissions.
+- For ECS Exec in private subnets without NAT, add `ssm`, `ssmmessages`, and `ec2messages` interface endpoints or provide equivalent outbound access.
