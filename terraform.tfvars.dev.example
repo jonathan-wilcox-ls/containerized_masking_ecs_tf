@@ -2,11 +2,23 @@ aws_region   = "us-west-2"
 environment  = "dev"
 project_name = "delphix-masking"
 
+# Persistent storage backend: efs (default) or ebs.
+storage_backend = "efs"
+
 # Create a complete dev network automatically.
 create_dev_network = true
 
+# Reduce NAT traffic with private AWS endpoints in the dev VPC.
+enable_private_aws_endpoints = true
+# interface_endpoint_services = ["ecr.api", "ecr.dkr", "logs", "secretsmanager", "kms", "sts"]
+
 # Restrict ALB ingress if desired.
 # alb_ingress_cidrs = ["203.0.113.0/24"]
+
+# Private-only service option:
+# alb_internal = true
+# For existing networking (create_dev_network = false), provide private ALB subnets:
+# alb_private_subnet_ids = ["subnet-aaa", "subnet-bbb"]
 
 # Optional overrides for generated network CIDRs.
 # dev_vpc_cidr             = "10.42.0.0/16"
@@ -20,6 +32,7 @@ create_dev_network = true
 create_acm_certificate = true
 acm_domain_name        = "masking-dev.example.com"
 route53_zone_id        = "Z1234567890ABC"
+# create_service_dns_record = true
 
 # Delphix images
 docker_registry_url        = "123456789012.dkr.ecr.us-west-2.amazonaws.com/repo-name"
@@ -34,6 +47,31 @@ task_memory        = 16384
 assign_public_ip   = false
 app_mask_debug     = "true"
 log_retention_days = 30
+# EFS deployments can take longer to become healthy on first boot.
+# Increase if you see ECS deployment circuit-breaker failures.
+service_health_check_grace_period_seconds = 900
+
+# Optional JDBC TLS truststore init sidecar.
+# Exactly one source must be set when enable_jdbc_tls_init = true.
+# enable_jdbc_tls_init          = true
+# jdbc_tls_cert_source_s3_uri   = "s3://my-bucket/path/global-bundle.pem"
+# jdbc_tls_cert_source_secret_arn = "arn:aws:secretsmanager:us-west-2:123456789012:secret:jdbc-tls-bundle-xxxx"
+# Optional override if you prefer a dedicated image with `aws` + `keytool`.
+# jdbc_tls_init_image           = "123456789012.dkr.ecr.us-west-2.amazonaws.com/my-jdbc-init:latest"
+# jdbc_tls_truststore_password  = "changeit"
 
 # Optional: needed only for private non-ECR registries
 # repository_credentials_secret_arn = "arn:aws:secretsmanager:us-west-2:123456789012:secret:registry-creds-xxxx"
+
+# Optional (required when storage_backend = "ebs")
+# ecs_infrastructure_role_arn = "arn:aws:iam::123456789012:role/ecsInfrastructureRole"
+# ebs_volume_type             = "gp3"
+# ebs_postgresql_size_in_gb   = 20
+# ebs_masking_size_in_gb      = 50
+# ebs_filesystem_type         = "xfs"
+# ebs_snapshot_id             = "snap-0123456789abcdef0"
+# ebs_iops                    = 3000
+# ebs_throughput              = 125
+# ebs_volume_initialization_rate = 250
+# ebs_volume_tags             = { BackupClass = "predeploy" }
+# ebs_kms_key_id              = "arn:aws:kms:us-west-2:123456789012:key/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"

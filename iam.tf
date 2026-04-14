@@ -52,6 +52,8 @@ resource "aws_iam_role" "ecs_task" {
 
 # Allow containers to mount and write via EFS access points when IAM auth is enabled.
 data "aws_iam_policy_document" "ecs_task_efs" {
+  count = var.storage_backend == "efs" ? 1 : 0
+
   statement {
     effect = "Allow"
     actions = [
@@ -60,15 +62,84 @@ data "aws_iam_policy_document" "ecs_task_efs" {
       "elasticfilesystem:DescribeMountTargets"
     ]
     resources = [
-      aws_efs_file_system.masking.arn,
-      aws_efs_access_point.postgresql.arn,
-      aws_efs_access_point.masking.arn
+      module.storage_efs[0].file_system_arn,
+      module.storage_efs[0].postgresql_access_point_arn,
+      module.storage_efs[0].masking_access_point_arn,
+      module.storage_efs[0].ssl_access_point_arn
     ]
   }
 }
 
 resource "aws_iam_role_policy" "ecs_task_efs" {
+  count = var.storage_backend == "efs" ? 1 : 0
+
   name   = "${local.name_prefix}-efs-access"
   role   = aws_iam_role.ecs_task.id
-  policy = data.aws_iam_policy_document.ecs_task_efs.json
+  policy = data.aws_iam_policy_document.ecs_task_efs[0].json
+}
+
+data "aws_iam_policy_document" "ecs_task_jdbc_tls_source" {
+  count = var.enable_jdbc_tls_init ? 1 : 0
+
+  dynamic "statement" {
+    for_each = local.jdbc_tls_s3_object_arn == null ? [] : [1]
+    content {
+      effect = "Allow"
+      actions = [
+        "s3:GetObject"
+      ]
+      resources = [
+        local.jdbc_tls_s3_object_arn
+      ]
+    }
+  }
+
+  dynamic "statement" {
+    for_each = var.jdbc_tls_cert_source_secret_arn == null ? [] : [1]
+    content {
+      effect = "Allow"
+      actions = [
+        "secretsmanager:GetSecretValue"
+      ]
+      resources = [
+        var.jdbc_tls_cert_source_secret_arn
+      ]
+    }
+  }
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "kms:Decrypt"
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_role_policy" "ecs_task_jdbc_tls_source" {
+  count = var.enable_jdbc_tls_init ? 1 : 0
+
+  name   = "${local.name_prefix}-jdbc-tls-source-access"
+  role   = aws_iam_role.ecs_task.id
+  policy = data.aws_iam_policy_document.ecs_task_jdbc_tls_source[0].json
+}
+
+resource "aws_iam_role_policy" "ecs_task_exec" {
+  name = "${local.name_prefix}-ecs-exec"
+  role = aws_iam_role.ecs_task.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ssmmessages:CreateControlChannel",
+          "ssmmessages:CreateDataChannel",
+          "ssmmessages:OpenControlChannel",
+          "ssmmessages:OpenDataChannel"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
 }

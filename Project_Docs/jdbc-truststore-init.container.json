@@ -1,0 +1,45 @@
+{
+  "name": "jdbc-truststore-init",
+  "image": "<jdbc-tls-init-image>",
+  "essential": false,
+  "entryPoint": [
+    "/bin/sh",
+    "-lc"
+  ],
+  "command": [
+"set -eu; mkdir -p \"$JDBC_TLS_SSL_PATH\" \"$JDBC_TLS_SSL_PATH/split\"; rm -f \"$JDBC_TLS_SSL_PATH/source.pem\" \"$JDBC_TLS_SSL_PATH/.masking_certs\"; rm -f \"$JDBC_TLS_SSL_PATH/split/\"*.crt; if [ -n \"$JDBC_TLS_CERT_SOURCE_S3_URI\" ]; then aws s3 cp \"$JDBC_TLS_CERT_SOURCE_S3_URI\" \"$JDBC_TLS_SSL_PATH/source.pem\"; elif [ -n \"$JDBC_TLS_CERT_SOURCE_SECRET_ARN\" ]; then aws secretsmanager get-secret-value --secret-id \"$JDBC_TLS_CERT_SOURCE_SECRET_ARN\" --query SecretString --output text > \"$JDBC_TLS_SSL_PATH/source.pem\"; else echo \"No JDBC TLS certificate source configured\"; exit 1; fi; awk -v outdir=\"$JDBC_TLS_SSL_PATH/split\" 'BEGIN{n=0} /BEGIN CERTIFICATE/{n++; f=sprintf(\"%s/cert-%02d.crt\", outdir, n)} {if(n>0) print > f} /END CERTIFICATE/{close(f)}' \"$JDBC_TLS_SSL_PATH/source.pem\"; certs=\"$(find \"$JDBC_TLS_SSL_PATH/split\" -maxdepth 1 -type f -name '*.crt' | sort)\"; [ -n \"$certs\" ] || { echo 'No certificates extracted from certificate source'; exit 1; }; for f in $certs; do a=\"$(basename \"$f\" .crt)\"; keytool -import -trustcacerts -keystore \"$JDBC_TLS_SSL_PATH/.masking_certs\" -storepass \"$JDBC_TLS_TRUSTSTORE_PASSWORD\" -noprompt -alias \"$a\" -file \"$f\"; done; keytool -list -keystore \"$JDBC_TLS_SSL_PATH/.masking_certs\" -storepass \"$JDBC_TLS_TRUSTSTORE_PASSWORD\""
+  ],
+  "environment": [
+    {
+      "name": "JDBC_TLS_SSL_PATH",
+      "value": "/var/delphix/ssl"
+    },
+    {
+      "name": "JDBC_TLS_CERT_SOURCE_S3_URI",
+      "value": "s3://<bucket>/<key>.pem"
+    },
+    {
+      "name": "JDBC_TLS_CERT_SOURCE_SECRET_ARN",
+      "value": ""
+    },
+    {
+      "name": "JDBC_TLS_TRUSTSTORE_PASSWORD",
+      "value": "changeit"
+    }
+  ],
+  "mountPoints": [
+    {
+      "sourceVolume": "ssl-storage",
+      "containerPath": "/var/delphix/ssl",
+      "readOnly": false
+    }
+  ],
+  "logConfiguration": {
+    "logDriver": "awslogs",
+    "options": {
+      "awslogs-group": "/ecs/delphix-masking-dev",
+      "awslogs-region": "<region>",
+      "awslogs-stream-prefix": "jdbc-truststore-init"
+    }
+  }
+}
