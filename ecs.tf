@@ -307,6 +307,10 @@ resource "aws_ecs_service" "masking" {
       error_message = "ecs_infrastructure_role_arn must be set when storage_backend is \"ebs\"."
     }
     precondition {
+      condition     = var.storage_backend != "ebs" || can(regex("^arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/.+$", var.ecs_infrastructure_role_arn))
+      error_message = "ecs_infrastructure_role_arn must be an IAM role ARN in the current AWS account. Example placeholder ARNs or non-role ARNs will fail ECS CreateService with \"Role is not valid\"."
+    }
+    precondition {
       condition     = var.storage_backend != "ebs" || var.desired_count == 1
       error_message = "desired_count must be 1 when storage_backend is \"ebs\" because ECS creates one managed EBS volume per service task."
     }

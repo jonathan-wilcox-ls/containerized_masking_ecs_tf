@@ -6,6 +6,7 @@ project_name = "delphix-masking"
 storage_backend = "ebs"
 
 # Required for ECS managed EBS volumes
+# This must be a real IAM role ARN in your current AWS account, not the placeholder example account.
 ecs_infrastructure_role_arn = "arn:aws:iam::123456789012:role/ecsInfrastructureRole"
 
 # EBS settings
